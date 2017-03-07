@@ -14,7 +14,7 @@ defmodule ExKik do
   # ============
   # = Messages =
   # ============
-  defp picture_message(chat_id, username, picture_url, options) do
+  def picture_message(chat_id, username, picture_url, options \\ []) do
     %{
       type: "picture",
       pictureUrl: picture_url,
@@ -23,7 +23,7 @@ defmodule ExKik do
     |> add_options(options)
   end
 
-  defp link_message(chat_id, username, url, options) do
+  def link_message(chat_id, username, url, options \\ []) do
     %{
       type: "link",
       url: url
@@ -32,7 +32,7 @@ defmodule ExKik do
     |> add_options(options)
   end
 
-  defp text_message(chat_id, username, text, options) do
+  def text_message(chat_id, username, text, options \\ []) do
     %{
       type: "text",
       body: text,
@@ -41,13 +41,21 @@ defmodule ExKik do
     |> add_options(options)
   end
 
-  defp video_message(chat_id, username, video_url, options) do
+  def video_message(chat_id, username, video_url, options \\ []) do
     %{
       type: "video",
       videoUrl: video_url,
     }
     |> add_recipient(chat_id, username)
     |> add_options(options)
+  end
+
+  def typing_message(chat_id, username) do
+    %{
+      type: "is-typing",
+      isTyping: true,
+    }
+    |> add_recipient(chat_id, username)
   end
 
   # ==================
@@ -68,16 +76,8 @@ defmodule ExKik do
   end
 
   def send_typing(chat_id, username) do
-    post("message", %{
-      messages: [
-        %{
-          chatId: chat_id,
-          type: "is-typing",
-          to: username,
-          isTyping: true,
-        }
-      ]
-    })
+    message = typing_message(chat_id, username)
+    send_message(message)
   end
 
   def send_link(chat_id, username, url, options \\ []) do
@@ -108,7 +108,7 @@ defmodule ExKik do
     |> Map.merge(message)
   end
 
-  defp send_message(message) do
+  def send_message(message) do
     post("message", %{"messages" => [message]})
   end
 

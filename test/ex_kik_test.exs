@@ -49,6 +49,20 @@ defmodule ExKikTest do
     ExKik.send_text("foobar", "ciaran", "http://video-url.com", attribution: %{name: "ex_kik"})
   end
 
+  test "send manual text", %{bypass: bypass} do
+    bypass_routes(bypass) do
+      plug Plug.Parsers, parsers: [:json], json_decoder: Poison
+
+      post "/message" do
+        assert conn.params == %{"messages" => [%{"chatId" => "foobar", "to" => "ciaran", "type" => "text", "body" => "http://video-url.com", "attribution" => %{"name" => "ex_kik"}}]}
+        Plug.Conn.send_resp conn, 200, ""
+      end
+    end
+
+    message = ExKik.text_message("foobar", "ciaran", "http://video-url.com", attribution: %{name: "ex_kik"})
+    ExKik.send_message(message)
+  end
+
   def send_file(conn, file),
     do: Plug.Conn.send_resp(conn, 200, File.read!("test/fixtures/response/" <> file))
 end
