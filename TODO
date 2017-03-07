@@ -1,0 +1,4 @@
+Remove attribution config, should be passed with video
+
+Change all send_ functions to be of the form send_*(username, chatId, data, options)
+
