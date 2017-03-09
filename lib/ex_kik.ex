@@ -112,6 +112,10 @@ defmodule ExKik do
     post("message", %{"messages" => [message]})
   end
 
+  def send_messages(messages) do
+    post("message", %{"messages" => messages})
+  end
+
   def post(endpoint, data) do
     headers = %{"Content-Type" => "application/json"}
     url     = get_endpoint() <> endpoint
