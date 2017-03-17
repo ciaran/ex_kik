@@ -10,6 +10,8 @@ defmodule ExKik do
     do: post("config", %{webhook: url})
   def set_webhook(url, features) when is_map(features),
     do: post("config", %{webhook: url, features: features})
+  def set_webhook(url, features, keyboard),
+    do: post("config", %{webhook: url, features: features, staticKeyboard: keyboard})
 
   # ============
   # = Messages =
