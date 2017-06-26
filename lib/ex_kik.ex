@@ -19,7 +19,7 @@ defmodule ExKik do
   def picture_message(chat_id, username, picture_url, options \\ []) do
     %{
       type: "picture",
-      pictureUrl: picture_url,
+      picUrl: picture_url,
     }
     |> add_recipient(chat_id, username)
     |> add_options(options)
