@@ -1,5 +1,6 @@
 defmodule ExKikTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
   doctest ExKik
   import BypassRoutes
 
@@ -61,6 +62,21 @@ defmodule ExKikTest do
 
     message = ExKik.text_message("foobar", "ciaran", "http://video-url.com", attribution: %{name: "ex_kik"})
     ExKik.send_message(message)
+  end
+
+  test "error handling", %{bypass: bypass} do
+    bypass_routes(bypass) do
+      plug Plug.Parsers, parsers: [:json], json_decoder: Poison
+
+      post "/message" do
+        Plug.Conn.send_resp conn, 400, ~s({"message":"Too many requests for user: 'daisyrose82'","error":"TooManyRequests"})
+      end
+    end
+
+    assert capture_log(fn ->
+      message = ExKik.text_message("foobar", "ciaran", "http://video-url.com", attribution: %{name: "ex_kik"})
+      ExKik.send_message(message)
+    end) =~ "TooManyRequests"
   end
 
   def send_file(conn, file),

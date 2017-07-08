@@ -134,10 +134,13 @@ defmodule ExKik do
         # which can happen when we message a bot, or a chat ID which has expired(?)
         nil
 
-      {:ok, response} ->
-        Logger.error "Received error from Kik #{inspect body}"
-        Logger.error "Request:\n#{inspect data}"
-        Logger.error "Response:\n#{response.body}"
+      {:ok, response = %{body: body}} ->
+        case Poison.decode(body) do
+          {:ok, %{"message" => message, "error" => error}} ->
+            Logger.error "Kik #{error} error\n#{message}\nRequest:\n#{inspect data}"
+          _ ->
+            Logger.error "Received error from Kik\n#{inspect body}\n\nRequest:\n#{inspect data}\n\nResponse:\n#{response.body}"
+        end
 
       {:error, error} ->
         Logger.error "Error while calling Kik endpoint: #{inspect error}"
