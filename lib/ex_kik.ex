@@ -6,6 +6,17 @@ defmodule ExKik do
   def get_api_key,  do: Application.get_env(:ex_kik, :api_key)
   def get_endpoint, do: Application.get_env(:ex_kik, :endpoint, "https://api.kik.com/v1/")
 
+  def get_request_options do
+    [
+      recv_timeout: Application.get_env(:ex_kik, :recv_timeout, 5_000),
+      connect_timeout: Application.get_env(:ex_kik, :connect_timeout, 10_000),
+      timeout: Application.get_env(:ex_kik, :timeout, 10_000),
+      max_retries: Application.get_env(:ex_kik, :max_retries, 3),
+      backoff_factor: Application.get_env(:ex_kik, :backoff_factor, 1000),
+      backoff_max: Application.get_env(:ex_kik, :backoff_max, 30_000),
+    ]
+  end
+
   def set_webhook(url),
     do: post("config", %{webhook: url})
   def set_webhook(url, features) when is_map(features),
@@ -118,11 +129,13 @@ defmodule ExKik do
     post("message", %{"messages" => messages})
   end
 
-  def post(endpoint, data) do
+  def post(endpoint, data, tries \\ 0) do
     headers = %{"Content-Type" => "application/json"}
     url     = get_endpoint() <> endpoint
     options = [hackney: [basic_auth: {get_bot_name(), get_api_key()}]]
     body    = Poison.encode!(data)
+
+    options = options ++ get_request_options()
 
     case HTTPoison.post(url, body, headers, options) do
       {:ok, %{status_code: 200}} ->
@@ -142,8 +155,26 @@ defmodule ExKik do
             Logger.error "Received error from Kik\n#{inspect body}\n\nRequest:\n#{inspect data}\n\nResponse:\n#{response.body}"
         end
 
+      {:error, %{reason: :timeout}} ->
+        case retry(tries, options) do
+          {:ok, :retry} -> post(endpoint, data, tries + 1)
+          {:error, :out_of_tries} -> {:error, :timeout}
+        end
+
       {:error, error} ->
         Logger.error "Error while calling Kik endpoint: #{inspect error}"
+    end
+  end
+
+  defp retry(tries, options) do
+    cond do
+      tries < options[:max_retries] ->
+        backoff = round(options[:backoff_factor] * :math.pow(2, tries - 1))
+        backoff = :erlang.min(backoff, options[:backoff_max])
+        :timer.sleep(backoff)
+        {:ok, :retry}
+
+      true -> {:error, :out_of_tries}
     end
   end
 end
