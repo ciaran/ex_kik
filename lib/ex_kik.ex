@@ -148,10 +148,27 @@ defmodule ExKik do
     body    = Poison.encode!(data)
 
     options = options ++ get_request_options()
+    response = HTTPoison.post(url, body, headers, options)
 
-    case HTTPoison.post(url, body, headers, options) do
+    case handle_response(response) do
+      :retry ->
+        case retry(tries, options) do
+          {:ok, :retry} -> post(endpoint, data, tries + 1)
+          {:error, :out_of_tries} -> {:error, :timeout}
+        end
+      result ->
+        result
+    end
+  end
+
+  defp handle_response(response, request \\ nil) do
+    case response do
       {:ok, %{status_code: 200}} ->
         nil
+
+      {:ok, %{status_code: 502}} ->
+        # Server error, retry
+        :retry
 
       {:ok, %{status_code: 403}} ->
         # Ignore such errors –
@@ -162,16 +179,13 @@ defmodule ExKik do
       {:ok, response = %{body: body}} ->
         case Poison.decode(body) do
           {:ok, %{"message" => message, "error" => error}} ->
-            Logger.error "Kik #{error} error\n#{message}\nRequest:\n#{inspect data}"
+            Logger.error "Kik #{error} error\n#{message}\nRequest:\n#{inspect(request, pretty: true)}"
           _ ->
-            Logger.error "Received error from Kik\n#{inspect body}\n\nRequest:\n#{inspect data}\n\nResponse:\n#{response.body}"
+            Logger.error "Received error from Kik:\n#{body}\n\nRequest:\n#{inspect(request, pretty: true)}\n\nResponse:\n#{inspect response}"
         end
 
       {:error, %{reason: :timeout}} ->
-        case retry(tries, options) do
-          {:ok, :retry} -> post(endpoint, data, tries + 1)
-          {:error, :out_of_tries} -> {:error, :timeout}
-        end
+        :retry
 
       {:error, error} ->
         Logger.error "Error while calling Kik endpoint: #{inspect error}"
