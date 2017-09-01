@@ -24,6 +24,18 @@ defmodule ExKik do
   def set_webhook(url, features, keyboard),
     do: post("config", %{webhook: url, features: features, staticKeyboard: keyboard})
 
+  # TODO: Rename set_webhook to set_config
+  def get_config do
+    headers = %{"Content-Type" => "application/json"}
+    url     = get_endpoint() <> "config"
+    options = [hackney: [basic_auth: {get_bot_name(), get_api_key()}]]
+
+    case HTTPoison.get(url, headers, options) do
+      {:ok, %{status_code: 200, body: body}} ->
+        Poison.decode!(body)
+    end
+  end
+
   # ============
   # = Messages =
   # ============
